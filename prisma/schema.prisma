@@ -1,0 +1,128 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model UserRoles {
+  id Int @id 
+  role_name String
+
+  users UserHasRoles[]
+  //when we want to find users with certain roles it will be easy to understand for naming purpose for ex: adminRole.user
+
+  refreshTokens RefreshTokens[]
+}
+
+model User {
+  id Int @id@default(autoincrement())
+  firstname String
+  lastname String?
+  email String
+  phone_number String
+  password String
+  email_verified_at DateTime?
+  phone_verifier_at DateTime?
+  created_at DateTime @default(now())
+
+  roles UserHasRoles[]//similarly if we have users and want to check whether they have a certain role we will use myUser.roles
+  address UserAddresses[]
+  otps UserOTP[]
+  refreshTokens RefreshTokens[]
+
+}
+
+model RefreshTokens{
+  id Int @id @default(autoincrement())
+  user_id Int 
+  refresh_token String
+  role_id Int
+  device_info String
+  ip_address String
+  is_valid Boolean @default(true)
+  created_at DateTime @default(now())
+  expires_at DateTime
+
+  user User @relation(fields: [user_id],references: [id])
+  role UserRoles @relation(fields: [role_id],references: [id])
+}
+
+model UserHasRoles {
+  user_id Int
+  role_id Int
+  user User @relation(fields: [user_id],references: [id])
+  role UserRoles @relation(fields: [role_id],references: [id])
+
+  //user_id and role_id together form a primary key
+  @@id([user_id,role_id])
+  
+}
+
+// temporary user transaction(otp) data
+
+model UserOTP {
+  id Int @id @default(autoincrement())
+  user_id Int 
+  otp_code Int
+  status otp_status @default(pending)
+  created_at DateTime @default(now())
+  expires_at DateTime
+
+  user User @relation(fields: [user_id],references: [id]) 
+}
+
+enum otp_status {
+  pending
+  verified
+  expired
+}
+
+// address data
+
+model Country {
+  id Int @id @default(autoincrement())
+  name String @unique
+}
+
+model State {
+  id Int @id @default(autoincrement())
+  country_id Int
+  name String
+}
+
+model City {
+  id Int @id @default(autoincrement())
+  state_id Int @default(autoincrement())
+  name String
+}
+
+model Address {
+  id Int @id @default(autoincrement())
+  street_address String
+  pincode String
+  city_id Int
+  latitude Decimal @db.Decimal(10,8)
+  longitude Decimal @db.Decimal(11,8)
+
+  users UserAddresses[]
+}
+
+//user wanting to save multiple addresses to its account example -> home-1,home-2 or work.
+model UserAddresses {
+  user_id Int
+  address_id Int
+  label String
+
+  user User @relation(fields: [user_id],references: [id])
+  address Address @relation(fields: [address_id],references: [id])
+  @@id([user_id,address_id])
+}
