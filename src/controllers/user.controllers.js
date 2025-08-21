@@ -1,6 +1,7 @@
+import Api from "twilio/lib/rest/Api.js";
 import prisma from "../db/prisma.js";
 import { generateAndStoreTokens } from "../services/auth.service.js";
-import { hashPassword } from "../services/hashingPassword.services.js";
+import { comparePassword, hashPassword } from "../services/hashingPassword.services.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -113,3 +114,53 @@ export const registerUser = asyncHandler(async (req,res) => {
     return res.status(201).json(new ApiResponse(201,responseData,"Registered Successfully"));
 })
 
+export const loginUser = asyncHandler(async (req,res) => {
+    const {password,phone_number,roleId} = req.body;
+
+    if(!phone_number  || !password || roleId === undefined){
+        throw new ApiError(400,"Phone number, password required and roleID(developer)");
+    }
+
+    const user = await prisma.user.findFirst({
+        where:{
+            phone_number,
+        }
+    });
+
+    if(!user){
+        throw new ApiError(404,"User not found!");
+    }
+
+    const userRole = await prisma.userHasRoles.findUnique({
+        where: {
+            user_id_role_id:{
+                user_id:user.id,
+                role_id:roleId
+            }
+        }
+    });
+
+    if(!userRole) throw new ApiError("User does not have the requested role. Invalid credentials");
+
+
+    if(!user.phone_verifier_at) throw new ApiError("phone number not verified, plss complete the otp verification!");
+
+    const isPasswordValid = await comparePassword(password,user.password);
+    if(!isPasswordValid) throw new ApiError(401,"Invalid password");
+
+    const userWithRole = {...user,roles:[{role_id:roleId}]};
+    const {acccessToken,refreshToken} = await generateAndStoreTokens(userWithRole,req);
+
+    const {password:_,...userResponse} = user;
+    const responseData = {
+        user:userResponse,
+        acccessToken,
+        refreshToken
+    }
+
+    res.status(200).json(new ApiResponse(200,responseData,"User logged in successfully"));
+
+
+})
+
+// have to make refreshAccessToken controller in future.
