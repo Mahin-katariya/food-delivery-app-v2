@@ -31,9 +31,7 @@ export const registerUser = asyncHandler(async (req,res) => {
         where: {phone_number},
     });
 
-    console.log("\n--- DEBUGGING ---");
-    console.log("Phone number from request:", phone_number);
-    console.log("Result of findFirst user:", existingUser);
+    
 
     /* !!! If a user exists and creates an account with another role his password will still be the same which is kind of an issue we will look into !!! */
     if(existingUser) {
@@ -48,7 +46,12 @@ export const registerUser = asyncHandler(async (req,res) => {
         });
 
         if(existingRole){
-            throw new ApiError(409,"An account with this phone number and role exists.");
+
+            if (existingUser.phone_verifier_at === null){
+                throw new ApiError(409,"An unverified account already exists. Please verify your phone number to continue.");
+            }else{
+                throw new ApiError(409,"An account with this phone number and role already exists.")
+            }
         }
 
     // 3b. User exist but is registering for a new role.
@@ -109,3 +112,4 @@ export const registerUser = asyncHandler(async (req,res) => {
 
     return res.status(201).json(new ApiResponse(201,responseData,"Registered Successfully"));
 })
+
