@@ -115,7 +115,7 @@ export const registerUser = asyncHandler(async (req,res) => {
 })
 
 export const loginUser = asyncHandler(async (req,res) => {
-    const {password,phone_number,roleId} = req.body;
+    const {phone_number,password,roleId} = req.body;
 
     if(!phone_number  || !password || roleId === undefined){
         throw new ApiError(400,"Phone number, password required and roleID(developer)");
