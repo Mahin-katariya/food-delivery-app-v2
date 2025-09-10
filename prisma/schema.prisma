@@ -38,7 +38,7 @@ model User {
   address UserAddresses[]
   otps UserOTP[]
   refreshTokens RefreshTokens[]
-
+  user RestaurantBranches[]
 }
 
 model RefreshTokens{
@@ -114,6 +114,7 @@ model Address {
   longitude Decimal @db.Decimal(11,8)
 
   users UserAddresses[]
+  location RestaurantBranches[]
 }
 
 //user wanting to save multiple addresses to its account example -> home-1,home-2 or work.
@@ -126,3 +127,260 @@ model UserAddresses {
   address Address @relation(fields: [address_id],references: [id])
   @@id([user_id,address_id])
 }
+
+// Restaurant (Brand/Branch), Menu & Media
+
+model RestaurantBrands{
+  id Int @id @default(autoincrement())
+  name String @unique
+  logo_url String
+  description String?
+
+  branches RestaurantBranches[]
+  // brand BrandCuisines[]
+  brand_menu BrandMenuTemplate[]
+}
+
+model RestaurantBranches {
+  id Int @id @default(autoincrement())
+  brand_id Int 
+  user_id Int
+  address_id Int @unique
+  branch_name String
+  is_accepting_orders Boolean @default(true)
+
+  brand RestaurantBrands @relation(fields: [brand_id],references: [id])
+  user User @relation(fields: [user_id],references: [id])
+  location Address @relation(fields: [address_id],references: [id])
+
+  branch RestaurantMedia[]
+  branch_timing RestaurantTimings[]
+  // branches BranchCuisines[]
+  branch_menu_items BranchMenuItems[]
+  branch_menu_updated MenuUpdateProposals[]
+
+
+}
+
+model RestaurantMedia {
+  id Int @id @default(autoincrement())
+  branch_id Int
+  media_url String
+  media_type type @default(image)
+
+  branch RestaurantBranches @relation(fields: [branch_id],references: [id])
+  
+}
+
+enum type{
+  image
+  video
+}
+
+model RestaurantTimings{
+  id Int @id @default(autoincrement())
+  branch_id Int
+  weekDay week_day 
+  start_time DateTime
+  end_time DateTime
+
+  branch_timing RestaurantBranches @relation(fields: [branch_id],references: [id])
+
+}
+enum week_day{
+  Monday
+  Tuesday
+  Wednesday
+  Thursday
+  Friday
+  Saturday
+  Sunday
+}
+
+model Cuisines{
+  id Int @id @default(autoincrement())
+  name String
+
+  // brand_cuisine BrandCuisines[]
+  // branch_cuisine BranchCuisines[]
+}
+
+model BrandMenuTemplate {
+  id Int @id @default(autoincrement())
+  brand_id Int
+  version Int
+  status status @default(draft)
+  created_at DateTime @default(now())
+  published_at DateTime?
+
+  brand_menu RestaurantBrands @relation(fields: [brand_id],references: [id])
+  @@unique([brand_id,version])
+
+  brand_categories BrandMenuCategories[]
+  brand_menu_update MenuUpdateProposals[]
+}
+
+enum status{
+  draft
+  published
+  archived
+}
+
+model BrandMenuCategories{
+  id Int @id @default(autoincrement())
+  template_id Int
+  name String
+
+  brand_categories BrandMenuTemplate @relation(fields: [template_id],references: [id])
+
+  brand_menu_items BrandMenuItems[]
+  
+}
+
+model BrandMenuItems{
+  id Int @id @default(autoincrement())
+  category_id Int
+  name String
+  description String?
+  default_price Decimal
+
+  brand_menu_items BrandMenuCategories @relation(fields: [category_id],references: [id])
+
+  brand_item_variants BrandItemVariants[]
+  brandBranch_menu_items BranchMenuItems[]
+}
+
+model BrandItemVariants{
+  id Int @id  @default(autoincrement())
+  brand_item_id Int
+  name String
+  price_modifier Decimal
+
+  brand_item_variants BrandMenuItems @relation(fields: [brand_item_id],references: [id])
+}
+
+model BranchMenuItems {
+  id Int @id @default(autoincrement())
+  branch_id Int
+  source_brand_item_id Int
+  name String
+  description String?
+  price Decimal
+  image_url String?
+  is_available Boolean @default(true)
+
+  branch_menu_items RestaurantBranches @relation(fields: [branch_id],references: [id])
+  brandBranch_menu_items BrandMenuItems @relation(fields: [source_brand_item_id],references: [id])
+  branch_item_var BranchItemVariants[]
+}
+
+model BranchItemVariants{
+  id Int @id @default(autoincrement())
+  branch_item_id Int
+  name String
+  price Decimal
+  branch_item_var BranchMenuItems @relation(fields: [branch_item_id],references: [id])
+
+}
+
+enum proposal_status{
+  pending
+  accepting
+  rejected
+
+}
+
+model MenuUpdateProposals{
+  id Int @id @default(autoincrement())
+  template_id Int
+  branch_id Int
+  status proposal_status @default(pending)
+  
+  brand_menu_update BrandMenuTemplate @relation(fields: [template_id],references: [id])
+  branch_menu_updated RestaurantBranches @relation(fields: [branch_id],references: [id])
+}
+
+// CREATE TABLE restaurant_branches (
+//     id INT PRIMARY KEY AUTO_INCREMENT,
+//     brand_id INT NOT NULL,
+//     user_id INT NOT NULL,
+//     address_id INT NOT NULL UNIQUE,
+//     branch_name VARCHAR(200) COMMENT 'Optional: e.g., Swaroop Nagar Branch',
+//     is_accepting_orders BOOLEAN DEFAULT TRUE,
+//     FOREIGN KEY (brand_id) REFERENCES restaurant_brands(id),
+//     FOREIGN KEY (user_id) REFERENCES users(id),
+//     FOREIGN KEY (address_id) REFERENCES addresses(id)
+// );
+
+// CREATE TABLE restaurant_media (
+//     id INT PRIMARY KEY AUTO_INCREMENT,
+//     branch_id INT NOT NULL,
+//     media_url VARCHAR(255) NOT NULL,
+//     media_type ENUM('image', 'video') NOT NULL,
+//     FOREIGN KEY (branch_id) REFERENCES restaurant_branches(id)
+// );
+
+// CREATE TABLE restaurant_timings (
+//     id INT PRIMARY KEY AUTO_INCREMENT,
+//     branch_id INT NOT NULL,
+//     week_day ENUM('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday') NOT NULL,
+//     start_time TIME NOT NULL,
+//     end_time TIME NOT NULL,
+//     FOREIGN KEY (branch_id) REFERENCES restaurant_branches(id)
+// );
+
+// CREATE TABLE cuisines (
+//     id INT PRIMARY KEY AUTO_INCREMENT,
+//     name VARCHAR(100) NOT NULL UNIQUE
+// );
+
+// CREATE TABLE brand_cuisines (
+//     brand_id INT NOT NULL,
+//     cuisine_id INT NOT NULL,
+//     PRIMARY KEY (brand_id, cuisine_id),
+//     FOREIGN KEY (brand_id) REFERENCES restaurant_brands(id),
+//     FOREIGN KEY (cuisine_id) REFERENCES cuisines(id)
+// );
+
+// CREATE TABLE branch_custom_cuisines (
+//     branch_id INT NOT NULL,
+//     cuisine_id INT NOT NULL,
+//     PRIMARY KEY (branch_id, cuisine_id),
+//     FOREIGN KEY (branch_id) REFERENCES restaurant_branches(id),
+//     FOREIGN KEY (cuisine_id) REFERENCES cuisines(id)
+// );
+
+// CREATE TABLE menu_categories (
+//     id INT PRIMARY KEY AUTO_INCREMENT,
+//     name VARCHAR(100) NOT NULL UNIQUE COMMENT 'e.g., Appetizers, Main Course, Desserts'
+// );
+
+// CREATE TABLE menu_items (
+//     id INT PRIMARY KEY AUTO_INCREMENT,
+//     brand_id INT NOT NULL,
+//     category_id INT NOT NULL,
+//     name VARCHAR(150) NOT NULL,
+//     description TEXT,
+//     price DECIMAL(10, 2) NOT NULL,
+//     is_veg BOOLEAN NOT NULL,
+//     image_url VARCHAR(255) NULL COMMENT 'Stores the single image URL for the item',
+//     FOREIGN KEY (brand_id) REFERENCES restaurant_brands(id),
+//     FOREIGN KEY (category_id) REFERENCES menu_categories(id)
+// );
+
+// CREATE TABLE branch_menu_availability (
+//     branch_id INT NOT NULL,
+//     menu_item_id INT NOT NULL,
+//     is_available BOOLEAN DEFAULT TRUE,
+//     PRIMARY KEY (branch_id, menu_item_id),
+//     FOREIGN KEY (branch_id) REFERENCES restaurant_branches(id),
+//     FOREIGN KEY (menu_item_id) REFERENCES menu_items(id)
+// );
+
+// CREATE TABLE menu_variants (
+//     id INT PRIMARY KEY AUTO_INCREMENT,
+//     menu_item_id INT NOT NULL,
+//     name VARCHAR(100) NOT NULL COMMENT 'e.g., Small, Medium, Large',
+//     price_modifier DECIMAL(10, 2) NOT NULL COMMENT 'e.g., -1.00, 0.00, +2.50',
+//     FOREIGN KEY (menu_item_id) REFERENCES menu_items(id)
+// );
