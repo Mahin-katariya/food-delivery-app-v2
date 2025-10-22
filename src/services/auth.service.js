@@ -3,7 +3,7 @@ import prisma from '../db/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 
 
-export async function generateAndStoreTokens(user,req){
+export async function generateAndStoreTokens(user,req,roleId){
     const accessTokenPayload = {id:user.id,firstname:user.firstname,phone:user.phone_number};
     const refreshTokenPayload = {id:user.id};
 
@@ -19,7 +19,6 @@ export async function generateAndStoreTokens(user,req){
         {expiresIn:process.env.REFRESH_TOKEN_EXPIRY}
     )
 
-    const roleId = user.roles[0]?.role_id;
     if(roleId === undefined){
         throw new ApiError(500,`User with ID ${user.id} has no role assigned for this session`);
     }
